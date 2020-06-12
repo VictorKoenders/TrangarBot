@@ -2,69 +2,86 @@
 //!
 //! This polls https://forums.factorio.com/viewforum.php?f=3 at a regular interval. If there is a
 //! new post available, it will be broadcasted to the IRC client.
-//!
-//! If `running` is set to `false`, this thread will end
 
-use irc::client::ext::ClientExt;
+use crate::data::Client;
+use parking_lot::RwLock;
 use regex::Regex;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-pub fn spawn(data: crate::data::Data, running: Arc<AtomicBool>) {
-    std::thread::spawn(move || {
+fn find_channel_topic(client: &Arc<RwLock<Client>>, channel_name: &str) -> Option<String> {
+    let client = client.read();
+    let channel = client.find_channel(&channel_name)?;
+    let channel = channel.read();
+    let topic = channel.topic.to_owned();
+    Some(topic.to_owned())
+}
+
+pub fn spawn(client: Arc<RwLock<Client>>, channel_name: String) {
+    tokio::spawn(async move {
         let mut current_version = None;
-        while running.load(Ordering::Relaxed) {
-            let (version, url) = match get_last_version() {
+        while client.read().running {
+            sleep().await;
+            let (url, version) = match get_last_version().await {
                 Ok(v) => v,
                 Err(e) => {
                     eprintln!("Cannot poll factorio version: {:?}", e);
-                    std::thread::sleep(std::time::Duration::from_secs(60));
                     continue;
                 }
             };
-            if current_version != Some(version.clone()) {
-                if let Some(channel) = data.get_channel_topic("#factorio") {
-                    let mut split: Vec<String> = channel
-                        .topic
-                        .split('|')
-                        .map(|s| String::from(s.trim()))
-                        .collect();
+            if current_version.is_some() && current_version != Some(version.to_owned()) {
+                let topic = match find_channel_topic(&client, &channel_name) {
+                    Some(topic) => topic,
+                    None => {
+                        eprintln!("Tried to notify of a new factorio version, but could not find channel {:?}", channel_name);
+                        continue;
+                    }
+                };
+                let mut split: Vec<String> =
+                    topic.split('|').map(|s| String::from(s.trim())).collect();
 
-                    if split.len() < 3 {
-                        eprintln!("Invalid channel topic, expected at least 3 parts");
-                        eprintln!("Topic is now: {:?}", channel.topic);
-                    } else {
-                        let url = format!(
-                            "https://forums.factorio.com/{}",
-                            if url.starts_with("./") {
-                                &url[2..]
-                            } else {
-                                &url
-                            }
-                        );
-                        split[1] = format!("Latest version: {} {}", version, url);
-                        if let Err(e) = data.client.send_topic("#factorio", split.join(" | ")) {
-                            eprintln!("Could not set #factorio topic: {:?}", e);
+                if split.len() < 3 {
+                    eprintln!("Invalid channel topic, expected at least 3 parts");
+                    eprintln!("Topic is now: {:?}", topic);
+                } else {
+                    let url = format!(
+                        "https://forums.factorio.com/{}",
+                        if url.starts_with("./") {
+                            &url[2..]
+                        } else {
+                            &url
                         }
-                        if let Err(e) = data.client.send_privmsg(
-                            "#factorio",
+                    );
+                    split[1] = format!("Latest version: {} {}", version, url);
+                    {
+                        let sender = client.read();
+                        let sender = &sender.sender;
+                        if let Err(e) = sender.send_topic(&channel_name, split.join(" | ")) {
+                            eprintln!("Could not set {} topic: {:?}", channel_name, e);
+                        }
+                        if let Err(e) = sender.send_privmsg(
+                            &channel_name,
                             format!("Version {} released. {}", version, url),
                         ) {
-                            eprintln!("Could not send version message to #factorio: {:?}", e);
+                            eprintln!(
+                                "Could not send version message to {}: {:?}",
+                                channel_name, e
+                            );
                         }
                     }
                 }
             }
             current_version = Some(version);
-
-            std::thread::sleep(std::time::Duration::from_secs(60));
         }
     });
 }
 
-#[test]
-fn load_version() {
-    let (url, version) = get_last_version().expect("Could not load version");
+async fn sleep() {
+    tokio::time::delay_for(Duration::from_secs(60)).await;
+}
+
+#[tokio::test]
+async fn load_version() {
+    let (url, version) = get_last_version().await.expect("Could not load version");
     println!("Version url: {:?}", url);
     println!("Version: {:?}", version);
     assert!(
@@ -79,12 +96,19 @@ fn load_version() {
     );
 }
 
-fn get_last_version() -> Result<(String, String), failure::Error> {
-    let response = reqwest::get("https://forums.factorio.com/viewforum.php?f=3")?.text()?;
-    let regex = Regex::new(r#"<a href="([^"]*)"[^>]*topictitle">Version ([^<]*)<"#)?;
+async fn get_last_version() -> Result<(String, String), String> {
+    let response = reqwest::get("https://forums.factorio.com/viewforum.php?f=3")
+        .await
+        .map_err(|e| e.to_string())?
+        .text()
+        .await
+        .map_err(|e| e.to_string())?;
+    let regex = Regex::new(r#"<a href="([^"]*)"[^>]*topictitle">Version ([^<]*)<"#)
+        .map_err(|e| e.to_string())?;
+
     if let Some(capture) = regex.captures_iter(&response).next() {
         Ok((capture[1].to_owned(), capture[2].to_owned()))
     } else {
-        failure::bail!("Could not find version");
+        Err(String::from("Could not find version"))
     }
 }

@@ -1,57 +1,63 @@
-use crate::data::Data;
-use chrono::{DateTime, Duration, Utc};
-use irc::client::ext::ClientExt;
+use crate::data::Message;
 use parking_lot::RwLock;
-use std::fmt::Write as _;
-use std::io::Write as _;
+use std::{
+    fmt::Write as _,
+    io::Write as _,
+    time::{Duration, Instant},
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct Command {
     trigger: String,
     response: Vec<String>,
     #[serde(skip)]
-    last_use: Option<DateTime<Utc>>,
+    last_use: Option<Instant>,
 }
 
 lazy_static::lazy_static! {
     static ref COMMANDS: RwLock<Vec<Command>> = RwLock::new(Vec::new());
-    static ref LAST_HELP_COMMAND: RwLock<DateTime<Utc>> = RwLock::new(chrono::MIN_DATE.and_hms(0, 0, 0));
-    static ref COMMAND_TIMEOUT: Duration = Duration::minutes(1);
+    static ref LAST_HELP_COMMAND: RwLock<Instant> = RwLock::new(Instant::now());
+    static ref COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
 }
 
 pub fn start() {
-    if let Ok(file) = std::fs::File::open("commands.json") {
-        let commands: Vec<Command> =
-            serde_json::from_reader(file).expect("Could not load commands.json");
-        *COMMANDS.write() = commands;
+    if COMMANDS.read().is_empty() {
+        if let Ok(file) = std::fs::File::open("commands.json") {
+            let commands: Vec<Command> =
+                serde_json::from_reader(file).expect("Could not load commands.json");
+            *COMMANDS.write() = commands;
+        }
     }
 }
 
-pub fn on_message(data: &Data, sender: &str, target: &str, message: &str) {
-    if message.trim() == "!help" {
-        if *LAST_HELP_COMMAND.read() < Utc::now() - *COMMAND_TIMEOUT {
-            let mut message = String::from("Commands: ");
+pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
+    if message.body.trim() == "!help" {
+        if LAST_HELP_COMMAND.read().elapsed() > *COMMAND_TIMEOUT {
+            let mut response = String::from("Commands: ");
             for (index, command) in COMMANDS.read().iter().enumerate() {
                 if index > 0 {
-                    message += ", ";
+                    response += ", ";
                 }
-                write!(&mut message, "!{}", command.trigger).expect("Could not create help text");
+                write!(&mut response, "!{}", command.trigger).expect("Could not create help text");
             }
-            write!(&mut message, " (All commands have a 1 minute cooldown)")
+            write!(&mut response, " (All commands have a 1 minute cooldown)")
                 .expect("Could not create help text");
-            if let Err(e) = data.client.send_privmsg(target, message) {
-                eprintln!("Could not send help command");
-                eprintln!("{:?}", e);
-            }
-            *LAST_HELP_COMMAND.write() = Utc::now();
-        } else {
-            println!("Cooldown :(");
+
+            message.reply(&response);
+
+            *LAST_HELP_COMMAND.write() = Instant::now();
         }
-        return;
+        return Ok(());
     }
 
-    if message.trim().starts_with("!learn") && data.user_is_op(target, sender) {
-        let remaining = &message.trim()["!learn".len()..];
+    if message.body.trim().starts_with("!learn")
+        && message
+            .channel
+            .as_ref()
+            .map(|c| c.read().user_is_op(message.sender))
+            .unwrap_or(false)
+    {
+        let remaining = &message.body.trim()["!learn".len()..];
         let mut split = remaining.split('=');
         if let Some(left_hand) = split.next() {
             let left_hand = left_hand.trim();
@@ -64,7 +70,7 @@ pub fn on_message(data: &Data, sender: &str, target: &str, message: &str) {
                 .to_owned();
             if !right_hand.is_empty() {
                 let mut commands = COMMANDS.write();
-                commands.retain(|c| &c.trigger[1..] != left_hand);
+                commands.retain(|c| &c.trigger != left_hand);
                 commands.push(Command {
                     trigger: left_hand.to_owned(),
                     response: vec![right_hand],
@@ -75,7 +81,7 @@ pub fn on_message(data: &Data, sender: &str, target: &str, message: &str) {
                     Err(e) => {
                         eprintln!("Could not open commands.json for writing");
                         eprintln!("{:?}", e);
-                        return;
+                        return Ok(());
                     }
                 };
                 let json = match serde_json::to_string_pretty(&*commands) {
@@ -83,31 +89,37 @@ pub fn on_message(data: &Data, sender: &str, target: &str, message: &str) {
                     Err(e) => {
                         eprintln!("Could not serialize commands");
                         eprintln!("{:?}", e);
-                        return;
+                        return Ok(());
                     }
                 };
                 if let Err(e) = f.write_all(json.as_bytes()) {
                     eprintln!("Could not write commands json to file");
                     eprintln!("{:?}", e);
                 }
+                message.reply("Command saved");
+            }
+        }
+        return Ok(());
+    }
+    if message.body.starts_with('!') {
+        let text = &message.body[1..];
+        for command in COMMANDS.write().iter_mut() {
+            if text.starts_with(&command.trigger) && command_can_be_used(&command.last_use) {
+                command.last_use = Some(Instant::now());
+                for response in &command.response {
+                    message.reply(response);
+                }
+                return Ok(());
             }
         }
     }
-    if message.starts_with('!') {
-        let message = &message[1..];
-        for command in COMMANDS.write().iter_mut() {
-            if message.starts_with(&command.trigger)
-                && (command.last_use < Some(Utc::now() - *COMMAND_TIMEOUT))
-            {
-                command.last_use = Some(Utc::now());
-                for response in &command.response {
-                    if let Err(e) = data.client.send_privmsg(target, response) {
-                        eprintln!("Could not send response to custom command");
-                        eprintln!("{:?}", e);
-                    }
-                }
-                return;
-            }
-        }
+    Ok(())
+}
+
+fn command_can_be_used(last_use: &Option<Instant>) -> bool {
+    if let Some(instant) = last_use {
+        instant.elapsed() > *COMMAND_TIMEOUT
+    } else {
+        true
     }
 }

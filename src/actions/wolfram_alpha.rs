@@ -2,36 +2,37 @@
 //!
 //! Queries wolfram alpha with the given text
 
-use super::Data;
-use irc::client::ext::ClientExt;
+use crate::data::Message;
 use serde_json::Value;
 
-pub fn on_message(data: &Data, target: &str, message: &str, config: &crate::Config) {
-    if message.starts_with("!wa") {
-        let query = &message["!wa".len() + 1..].trim();
-        let send_result = match query_wolfram_alpha(config, query) {
-            Ok(result) => data.client.send_privmsg(target, result),
+pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
+    if message.body.starts_with("!wa") {
+        let query = &message.body["!wa".len() + 1..].trim();
+        match query_wolfram_alpha(message.config, query).await {
+            Ok(result) => message.reply(&result),
             Err(e) => {
                 eprintln!("Could not query WA: {:?}", e);
-                data.client
-                    .send_privmsg(target, format!("Could not query WA: {:?}", e))
+                message.reply(&format!("Could not query WA: {:?}", e));
             }
-        };
-        if let Err(e) = send_result {
-            eprintln!("Could not reply with a WA result: {:?}", e);
         }
     }
+    Ok(())
 }
 
-pub fn query_wolfram_alpha(config: &crate::Config, query: &str) -> Result<String, failure::Error> {
-    let mut url = url::Url::parse("https://api.wolframalpha.com/v2/query")?;
+pub async fn query_wolfram_alpha(config: &crate::Config, query: &str) -> Result<String, String> {
+    let mut url =
+        url::Url::parse("https://api.wolframalpha.com/v2/query").map_err(|e| e.to_string())?;
     url.query_pairs_mut()
         .append_pair("input", query)
         .append_pair("appid", &config.wolframalpha)
         .append_pair("output", "json");
 
-    let mut response = reqwest::get(url.as_str())?;
-    let json: Value = response.json()?;
+    let json: serde_json::Value = reqwest::get(url.as_str())
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(
         if let Some(Value::Array(pods)) = json.pointer("/queryresult/pods") {
@@ -59,10 +60,10 @@ pub fn query_wolfram_alpha(config: &crate::Config, query: &str) -> Result<String
                     .filter(|s| !s.is_empty())
                     .enumerate()
                     .fold(String::new(), |mut acc, (index, s)| {
-                        if index == 1 {
-                            acc += ": ";
-                        } else if index > 1 {
-                            acc += " | ";
+                        match index {
+                            1 => acc += ": ",
+                            n if n > 1 => acc += " | ",
+                            _ => {}
                         }
                         acc += &s.replace('\n', " ");
                         acc
@@ -79,9 +80,11 @@ pub fn query_wolfram_alpha(config: &crate::Config, query: &str) -> Result<String
     )
 }
 
-#[test]
-pub fn test() {
+#[tokio::test]
+pub async fn test() {
     let config = crate::Config::from_file("config.json");
-    let response = query_wolfram_alpha(&config, "machine train").expect("Could not query WA");
+    let response = query_wolfram_alpha(&config, "machine train")
+        .await
+        .expect("Could not query WA");
     println!("{}", response);
 }

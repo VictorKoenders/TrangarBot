@@ -1,58 +1,56 @@
-use crate::data::Data;
-use crate::Result;
-use irc::client::ext::ClientExt;
+use crate::data::Message;
 use std::fmt::Write;
 
-pub fn on_message(data: &Data, target: &str, message: &str, config: &crate::Config) {
-    if message == "!mp" {
-        let result = match load_games(config) {
-            Ok(mut games) => {
-                games.sort_unstable_by_key(|g| usize::max_value() - g.players.len());
-                let mut response = String::from("Top 5 games: ");
-                for (index, game) in games.iter().take(5).enumerate() {
-                    if index > 0 {
-                        response += ", ";
-                    }
-                    write!(
-                        &mut response,
-                        "{} ({} players, v{}{}{})",
-                        game.name,
-                        game.players.len(),
-                        game.application_version.game_version,
-                        if game.has_password { " +p" } else { "" },
-                        if game.mod_count > 0 { " modded" } else { "" }
-                    )
-                    .expect("Could not append server text to string");
-                }
-                data.client.send_privmsg(target, response)
-            }
+pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
+    if message.body.trim() == "!mp" {
+        let mut games = match load_games(message.config).await {
+            Ok(games) => games,
             Err(e) => {
                 eprintln!("Could not load games: {:?}", e);
-                data.client.send_privmsg(target, "Error loading games")
+                message.reply("Error loading games");
+                return Ok(());
             }
         };
 
-        if let Err(e) = result {
-            eprintln!("Could not send privmsg");
-            eprintln!("{:?}", e);
+        games.sort_unstable_by_key(|g| usize::max_value() - g.players.len());
+        let mut response = String::from("Top 5 games: ");
+        for (index, game) in games.iter().take(5).enumerate() {
+            if index > 0 {
+                response += ", ";
+            }
+            write!(
+                &mut response,
+                "{} ({} players, v{}{}{})",
+                game.name,
+                game.players.len(),
+                game.application_version.game_version,
+                if game.has_password { " +p" } else { "" },
+                if game.mod_count > 0 { " modded" } else { "" }
+            )
+            .expect("Could not append server text to string");
         }
+        message.reply(&response);
     }
+    Ok(())
 }
 
-#[test]
-pub fn test() {
+#[tokio::test]
+pub async fn test() {
     let config = crate::Config::from_file("config.json");
-    let games = load_games(&config).expect("Could not load games");
+    let games = load_games(&config).await.expect("Could not load games");
     println!("First MP game: {:?}", games.first());
 }
 
-fn load_games(config: &crate::Config) -> Result<Vec<GameInfo>> {
-    let mut response = reqwest::get(&format!(
+async fn load_games(config: &crate::Config) -> Result<Vec<GameInfo>, String> {
+    reqwest::get(&format!(
         "https://multiplayer.factorio.com/get-games?username={}&token={}",
         config.factorio_username, config.factorio_key
-    ))?;
-    let result = response.json()?;
-    Ok(result)
+    ))
+    .await
+    .map_err(|e| e.to_string())?
+    .json()
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Deserialize)]

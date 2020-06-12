@@ -1,7 +1,4 @@
-use irc::client::{Client, IrcClient};
-use parking_lot::RwLock;
-use std::sync::Arc;
-use irc::proto::mode::{Mode, ChannelMode};
+use irc::client::data::User as IrcUser;
 
 #[derive(Clone, Debug)]
 pub struct Channel {
@@ -11,130 +8,97 @@ pub struct Channel {
 }
 
 impl Channel {
-    pub fn get_or_create_user(&mut self, name: &str) -> &mut User {
-        let index = self.users.iter().position(|u| u.name == name).unwrap_or_else(|| {
-            self.users.push(User {
-                name: name.to_owned(),
-                host: String::new(),
-                flags: Vec::new()
-            });
-            self.users.len() - 1
-        });
-        &mut self.users[index]
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            topic: String::new(),
+            users: Vec::new(),
+        }
+    }
+
+    pub fn add_user(&mut self, mut name: String) {
+        let mut flags = Vec::new();
+        let possible_flags = &['@', '!', '~']; // TODO: Expand this
+        while let Some(flag) = name.chars().next().filter(|c| possible_flags.contains(c)) {
+            name.remove(0);
+            flags.push(flag);
+        }
+
+        if self.users.iter().find(|u| u.name == name).is_none() {
+            let user = User { name, flags };
+
+            self.users.push(user);
+        }
+    }
+
+    pub fn add_op(&mut self, name: &str) {
+        let user = match self.users.iter_mut().find(|u| u.name == name) {
+            Some(u) => u,
+            None => {
+                eprintln!("Warning: Adding op to a user that doesn't exist");
+                self.users.push(User {
+                    name: name.to_owned(),
+                    flags: Vec::new(),
+                });
+                self.users.last_mut().unwrap()
+            }
+        };
+        user.flags.push('@');
+    }
+    pub fn remove_op(&mut self, name: &str) {
+        let user = match self.users.iter_mut().find(|u| u.name == name) {
+            Some(u) => u,
+            None => {
+                eprintln!("Warning: Removing op from a user that doesn't exist");
+                self.users.push(User {
+                    name: name.to_owned(),
+                    flags: Vec::new(),
+                });
+                self.users.last_mut().unwrap()
+            }
+        };
+        user.flags.retain(|f| *f != '@');
+    }
+    pub fn rename_user(&mut self, old_name: &str, new_name: &str) {
+        for user in &mut self.users {
+            if user.name == old_name {
+                user.name = new_name.to_owned();
+            }
+        }
+    }
+    pub fn remove_user(&mut self, name: &str) {
+        self.users.retain(|u| u.name != name);
+    }
+
+    pub fn set_topic(&mut self, new_topic: String) {
+        self.topic = new_topic;
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct User {
     pub name: String,
-    pub host: String,
     pub flags: Vec<char>,
 }
 
-#[derive(Clone)]
-pub struct Data {
-    pub client: IrcClient,
-    pub channels: Arc<RwLock<Vec<Channel>>>,
+impl<'a> From<&'a IrcUser> for User {
+    fn from(u: &'a IrcUser) -> User {
+        panic!("{:?}", u);
+    }
 }
 
-impl Data {
-    pub fn new(client: IrcClient) -> Self {
-        let expected_channel_count = client.config().channels.as_ref().map(Vec::len).unwrap_or(0);
-        Self {
-            client,
-            channels: Arc::new(RwLock::new(Vec::with_capacity(expected_channel_count))),
-        }
-    }
-
-    pub fn get_channel_topic(&self, channel_name: &str) -> Option<Channel> {
-        self.channels
-            .read()
-            .iter()
-            .find(|c| c.name == channel_name)
-            .cloned()
-    }
-
-    pub fn set_topic(&self, channel_name: String, new_topic: String) {
-        let mut channels = self.channels.write();
-
-        if let Some(index) = channels.iter().position(|c| c.name == channel_name) {
-            channels[index].topic = new_topic;
+impl Channel {
+    pub fn user_is_op(&self, user: &str) -> bool {
+        if let Some(user) = self.users.iter().find(|u| u.name == user) {
+            if user.flags.iter().any(|f| *f == '@') {
+                return true;
+            }
+            false
         } else {
-            channels.push(Channel {
-                name: channel_name,
-                topic: new_topic,
-                users: Vec::new(),
-            });
+            eprintln!("Tried to look up a user but it could not be found");
+            eprintln!("Channel {:?} - user {:?}", self.name, user);
+            eprintln!("All users: {:?}", self.users);
+            false
         }
-    }
-
-    pub fn add_user(&self, channel_name: &str, mut user_name: &str) {
-        let mut channels = self.channels.write();
-        let index = match channels.iter().position(|c| c.name == channel_name) {
-            Some(i) => i,
-            None => {
-                channels.push(Channel {
-                    name: channel_name.to_owned(),
-                    topic: String::new(),
-                    users: Vec::new(),
-                });
-                channels.len() - 1
-            }
-        };
-        let channel = &mut channels[index];
-        let mut flags = Vec::new();
-        let available_flags = ['@', '+'];
-        while let Some(flag) = user_name.chars().next() {
-            if available_flags.contains(&flag) {
-                user_name = &user_name[1..];
-                flags.push(flag);
-            } else {
-                break;
-            }
-        }
-
-        channel.users.retain(|u| u.name != user_name);
-        channel.users.push(User {
-            name: user_name.to_owned(),
-            host: String::new(),
-            flags,
-        });
-    }
-
-    pub fn update_user_modes(&self, channel_name: &str, operations: Vec<Mode<ChannelMode>>) {
-        let mut channels = self.channels.write();
-        let index = match channels.iter().position(|c| c.name == channel_name) {
-            Some(i) => i,
-            None => {
-                channels.push(Channel {
-                    name: channel_name.to_owned(),
-                    topic: String::new(),
-                    users: Vec::new(),
-                });
-                channels.len() - 1
-            }
-        };
-        let channel = &mut channels[index];
-        for operation in operations {
-            match operation {
-                Mode::Plus(ChannelMode::Oper, Some(name)) => {
-                    let user = channel.get_or_create_user(&name);
-                    if !user.flags.contains(&'@') {
-                        user.flags.push('@');
-                    }
-                },
-                Mode::Minus(ChannelMode::Oper, Some(name)) => {
-                    let user = channel.get_or_create_user(&name);
-                    user.flags.retain(|f| f != &'@');
-                }
-                _ => {}
-            }
-        }
-
-        println!("{:?}", channel.users);
-    }
-
-    pub fn user_is_op(&self, _channel: &str, _user: &str) -> bool {
-        false
     }
 }

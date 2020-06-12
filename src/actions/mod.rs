@@ -5,20 +5,24 @@ mod commands;
 mod multiplayer_info;
 mod wolfram_alpha;
 
-use crate::data::Data;
-use crate::Result;
-use std::sync::atomic::AtomicBool;
+use crate::data::{Client, Message};
+use parking_lot::RwLock;
 use std::sync::Arc;
 
-pub fn start(data: Data, running: Arc<AtomicBool>) {
-    check_factorio_version::spawn(data.clone(), running.clone());
-    check_factorio_friday_facts::spawn(data, running);
+pub async fn on_start(client: Arc<RwLock<Client>>) -> Result<(), String> {
+    if let Some(factorio_channel) = client.read().server_config().factorio_channel.to_owned() {
+        check_factorio_version::spawn(Arc::clone(&client), factorio_channel.to_owned());
+        check_factorio_friday_facts::spawn(Arc::clone(&client), factorio_channel);
+    }
     commands::start();
+    Ok(())
 }
 
-pub fn execute(data: &Data, target: &str, message: &str, config: &crate::Config) -> Result<()> {
-    commands::on_message(data, "", target, message);
-    multiplayer_info::on_message(data, target, message, config);
-    wolfram_alpha::on_message(data, target, message, config);
-    Ok(())
+pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
+    futures::try_join!(
+        commands::on_message(message),
+        multiplayer_info::on_message(message),
+        wolfram_alpha::on_message(message),
+    )
+    .map(|_| ())
 }

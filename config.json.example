@@ -1,0 +1,14 @@
+{
+	"irc_password": "",
+	"youtube_key": "",
+	"factorio_username": "Trangar",
+	"factorio_key": "",
+	"wolframalpha": "",
+	"servers": [{
+		"host": "irc.esper.net",
+		"channels": [
+			"#trangarbot",
+			"#factorio"
+		]
+	}]
+}

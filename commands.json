@@ -1,0 +1,69 @@
+[
+  {
+    "trigger": "choochoo",
+    "response": [
+      "http: //i.imgur.com/TAVsVfp.jpg http://i.imgur.com/vldwVuO.gifv https://imgur.com/DXXxFjU http://i.imgur.com/xnh7rOV.jpg http://i.imgur.com/mdhdN6S.webm https://i.imgur.com/E08a7DV.gifv http://i.imgur.com/KFMavVV.jpg"
+    ]
+  },
+  {
+    "trigger": "types",
+    "response": [
+      "Available prototype types: http: //pastebin.com/KH7dp57y"
+    ]
+  },
+  {
+    "trigger": "experimental",
+    "response": [
+      "STEAM: go to the steam library > right click factorio > properties > betas > drop down menu > experimental. If the drop down menu doesn\"t work please restart steam and try again and it should work.",
+      "STANDALONE: go to the main menu > options > other > enable experimental updates. then go to main menu > about > check updates."
+    ]
+  },
+  {
+    "trigger": "bugs",
+    "response": [
+      " --- BUGS GO IN THE BUG REPORT SECTION AT https: //forums.factorio.com/viewforum.php?f=7 --- "
+    ]
+  },
+  {
+    "trigger": "devs",
+    "response": [
+      "Just ask your question, if we decide it's worth it to bother the devs with it, we'll help you contact them. If you don't want to share your question it's obviously not important enough to slow down the development of factorio"
+    ]
+  },
+  {
+    "trigger": "ups",
+    "response": [
+      "Is your base not performing like it used to? Is your PC locked at 100% CPU over all 1 cores? Download more ups today! http: //downloadmoreups.com "
+    ]
+  },
+  {
+    "trigger": "github",
+    "response": [
+      "https: //github.com/victorkoenders/TrangarBot"
+    ]
+  },
+  {
+    "trigger": "source",
+    "response": [
+      "https: //github.com/victorkoenders/TrangarBot"
+    ]
+  },
+  {
+    "trigger": "butts",
+    "response": [
+      "(_(_]   [_)_)"
+    ]
+  },
+  {
+    "trigger": "asdsad",
+    "response": [
+      "test"
+    ]
+  },
+  {
+    "trigger": "asd",
+    "response": [
+      "1"
+    ]
+  }
+]

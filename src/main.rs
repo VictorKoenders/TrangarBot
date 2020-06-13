@@ -6,7 +6,6 @@ mod data;
 
 use futures::StreamExt;
 use irc::client::{data::Config as IrcConfig, prelude::*};
-use parking_lot::RwLock;
 use serde_derive::{Deserialize, Serialize};
 use std::{convert::Infallible, sync::Arc, time::Duration};
 
@@ -38,9 +37,9 @@ async fn run_client(
 ) -> Result<Infallible, String> {
     println!("Connecting to {}", server_config.host);
     let irc_client = Client::from_config(IrcConfig {
-        server: Some(server_config.host.to_owned()),
+        server: Some(server_config.host.clone()),
         nickname: Some(String::from("TrangarBot")),
-        channels: server_config.channels.to_owned(),
+        channels: server_config.channels.clone(),
         port: Some(6697),
         use_tls: Some(true),
         ping_timeout: Some(60),
@@ -54,13 +53,13 @@ async fn run_client(
 
     let client = data::Client::new(
         Arc::clone(&config),
-        server_config.host.to_owned(),
+        server_config.host.clone(),
         irc_client.sender(),
     );
 
-    if let Err(e) = run_client_inner(config, server_config, irc_client, Arc::clone(&client)).await {
-        client.write().running = false;
-        return Err(e);
+    if let Err(e) = run_client_inner(config, server_config, irc_client, client.clone()).await {
+        client.set_running(false);
+        Err(e)
     } else {
         unreachable!()
     }
@@ -70,9 +69,9 @@ async fn run_client_inner(
     config: Arc<Config>,
     server_config: &ConfigServer,
     mut irc_client: Client,
-    client: Arc<RwLock<data::Client>>,
+    client: data::Client,
 ) -> Result<Infallible, String> {
-    actions::on_start(Arc::clone(&client)).await?;
+    actions::on_start(client.clone()).await?;
 
     let mut stream = irc_client.stream().unwrap();
     loop {
@@ -91,7 +90,7 @@ async fn run_client_inner(
                 Some(Prefix::Nickname(nickname, username, hostname)),
                 Command::PRIVMSG(channel_name, body),
             ) => {
-                let channel = client.read().find_channel(channel_name);
+                let channel = client.find_channel(channel_name);
                 let message = data::Message {
                     config: &config,
                     server_config,
@@ -113,49 +112,36 @@ async fn run_client_inner(
             }
             (_, Command::Response(Response::RPL_ENDOFMOTD, _)) => {
                 if let Some(password) = server_config.password.as_ref() {
-                    if let Err(e) = client
-                        .read()
-                        .sender
-                        .send_privmsg("NickServ", format!("identify TrangarBot {}", password))
-                    {
-                        eprintln!("Could not identify: {:?}", e);
-                    }
+                    client.send_to_channel("NickServ", format!("identify TrangarBot {}", password))
                 }
             }
             (_, Command::TOPIC(channel, Some(topic))) => {
-                let mut client = client.write();
-                let channel = client.find_or_create_channel(channel.to_owned());
-                let mut channel = channel.write();
-                channel.set_topic(topic.to_owned());
+                client
+                    .find_or_create_channel(channel.clone())
+                    .set_topic(topic.clone());
             }
             (_, Command::Response(Response::RPL_TOPIC, args)) => {
                 if let (Some(channel), Some(new_topic)) = (args.get(1), args.get(2)) {
-                    if let Some(channel) = client.read().find_channel(channel) {
-                        channel.write().set_topic(new_topic.to_owned());
+                    if let Some(channel) = client.find_channel(channel) {
+                        channel.set_topic(new_topic.clone());
                     }
                 }
             }
             (Some(Prefix::Nickname(nickname, _, _)), Command::PART(channel, _)) => {
-                if let Some(channel) = client.read().find_channel(&channel) {
-                    channel.write().remove_user(&nickname);
+                if let Some(channel) = client.find_channel(&channel) {
+                    channel.remove_user(&nickname);
                 }
             }
             (Some(Prefix::Nickname(nickname, _, _)), Command::JOIN(channel, None, None)) => {
                 client
-                    .write()
-                    .find_or_create_channel(channel.to_owned())
-                    .write()
-                    .add_user(nickname.to_owned());
+                    .find_or_create_channel(channel.clone())
+                    .add_user(nickname.clone());
             }
             (Some(Prefix::Nickname(nickname, _, _)), Command::NICK(new_nickname)) => {
-                let client = client.read();
-                for channel in &client.channels {
-                    channel.write().rename_user(nickname, new_nickname);
-                }
+                client.for_each_channel(|channel| channel.rename_user(nickname, new_nickname));
             }
             (_, Command::ChannelMODE(channel, operations)) => {
-                let channel = client.write().find_or_create_channel(channel.to_owned());
-                let mut channel = channel.write();
+                let channel = client.find_or_create_channel(channel.clone());
                 for operation in operations {
                     match operation {
                         Mode::Plus(ChannelMode::Oper, Some(nick)) => channel.add_op(nick),
@@ -166,17 +152,13 @@ async fn run_client_inner(
             }
             (_, Command::Response(Response::RPL_NAMREPLY, args)) => {
                 if let (Some(channel_name), Some(names)) = (args.get(2), args.get(3)) {
-                    let channel = client
-                        .write()
-                        .find_or_create_channel(channel_name.to_owned());
-                    let mut channel = channel.write();
+                    let channel = client.find_or_create_channel(channel_name.clone());
                     for name in names.split(' ') {
                         channel.add_user(name.to_owned());
                     }
                 }
             }
-            (_, Command::Response(Response::RPL_MOTD, _)) => {}
-            (_, Command::PONG(_, _)) => {}
+            (_, Command::Response(Response::RPL_MOTD, _)) | (_, Command::PONG(_, _)) => {}
             (_, cmd) => {
                 println!("{:?}", cmd);
             }

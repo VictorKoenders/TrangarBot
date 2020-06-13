@@ -54,7 +54,7 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
         && message
             .channel
             .as_ref()
-            .map(|c| c.read().user_is_op(message.sender))
+            .map(|c| c.user_is_op(message.sender))
             .unwrap_or(false)
     {
         let remaining = &message.body.trim()["!learn".len()..];
@@ -70,7 +70,7 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
                 .to_owned();
             if !right_hand.is_empty() {
                 let mut commands = COMMANDS.write();
-                commands.retain(|c| &c.trigger != left_hand);
+                commands.retain(|c| c.trigger != left_hand);
                 commands.push(Command {
                     trigger: left_hand.to_owned(),
                     response: vec![right_hand],

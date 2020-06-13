@@ -6,13 +6,11 @@ mod multiplayer_info;
 mod wolfram_alpha;
 
 use crate::data::{Client, Message};
-use parking_lot::RwLock;
-use std::sync::Arc;
 
-pub async fn on_start(client: Arc<RwLock<Client>>) -> Result<(), String> {
-    if let Some(factorio_channel) = client.read().server_config().factorio_channel.to_owned() {
-        check_factorio_version::spawn(Arc::clone(&client), factorio_channel.to_owned());
-        check_factorio_friday_facts::spawn(Arc::clone(&client), factorio_channel);
+pub async fn on_start(client: Client) -> Result<(), String> {
+    if let Some(factorio_channel) = client.server_config().factorio_channel {
+        check_factorio_version::spawn(client.clone(), factorio_channel.clone());
+        check_factorio_friday_facts::spawn(client, factorio_channel);
     }
     commands::start();
     Ok(())

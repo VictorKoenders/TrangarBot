@@ -4,22 +4,13 @@
 //! new post available, it will be broadcasted to the IRC client.
 
 use crate::data::Client;
-use parking_lot::RwLock;
 use regex::Regex;
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
-fn find_channel_topic(client: &Arc<RwLock<Client>>, channel_name: &str) -> Option<String> {
-    let client = client.read();
-    let channel = client.find_channel(&channel_name)?;
-    let channel = channel.read();
-    let topic = channel.topic.to_owned();
-    Some(topic.to_owned())
-}
-
-pub fn spawn(client: Arc<RwLock<Client>>, channel_name: String) {
+pub fn spawn(client: Client, channel_name: String) {
     tokio::spawn(async move {
         let mut last_facts = None;
-        while client.read().running {
+        while client.running() {
             sleep().await;
             let facts = match get_last_facts_post().await {
                 Ok(v) => v,
@@ -28,9 +19,9 @@ pub fn spawn(client: Arc<RwLock<Client>>, channel_name: String) {
                     continue;
                 }
             };
-            if last_facts.is_some() && last_facts != Some(facts.to_owned()) {
-                let topic = match find_channel_topic(&client, &channel_name) {
-                    Some(topic) => topic,
+            if last_facts.is_some() && last_facts != Some(facts.clone()) {
+                let topic = match client.find_channel(&channel_name) {
+                    Some(channel) => channel.topic(),
                     None => {
                         eprintln!("Tried to notify of a new factorio version, but could not find channel {:?}", channel_name);
                         continue;
@@ -45,23 +36,12 @@ pub fn spawn(client: Arc<RwLock<Client>>, channel_name: String) {
                 } else {
                     let url = format!("http://factorio.com/blog/post/fff-{}", facts);
                     split[2] = format!("Friday facts #{}: {}", facts, url);
-                    {
-                        let sender = client.read();
-                        let sender = &sender.sender;
 
-                        if let Err(e) = sender.send_topic(&channel_name, split.join(" | ")) {
-                            eprintln!("Could not set {} topic: {:?}", channel_name, e);
-                        }
-                        if let Err(e) = sender.send_privmsg(
-                            &channel_name,
-                            format!("New factorio facts: {} {}", facts, url),
-                        ) {
-                            eprintln!(
-                                "Could not send version message to {}: {:?}",
-                                channel_name, e
-                            );
-                        }
-                    }
+                    client.send_to_channel(&channel_name, split.join(" | "));
+                    client.send_to_channel(
+                        &channel_name,
+                        format!("New factorio facts: {} {}", facts, url),
+                    );
                 }
             }
             last_facts = Some(facts);

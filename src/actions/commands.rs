@@ -1,7 +1,6 @@
 use crate::data::Message;
 use parking_lot::RwLock;
 use std::{
-    fmt::Write as _,
     io::Write as _,
     time::{Duration, Instant},
 };

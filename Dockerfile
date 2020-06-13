@@ -10,7 +10,6 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable --pr
 COPY src ./src/
 COPY Cargo.toml .
 
-RUN ls -laR
 RUN source $HOME/.cargo/env && cargo build --release --target x86_64-unknown-linux-musl
 
 FROM alpine:latest

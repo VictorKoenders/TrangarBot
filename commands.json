@@ -2,13 +2,13 @@
   {
     "trigger": "choochoo",
     "response": [
-      "http: //i.imgur.com/TAVsVfp.jpg http://i.imgur.com/vldwVuO.gifv https://imgur.com/DXXxFjU http://i.imgur.com/xnh7rOV.jpg http://i.imgur.com/mdhdN6S.webm https://i.imgur.com/E08a7DV.gifv http://i.imgur.com/KFMavVV.jpg"
+      "http://i.imgur.com/TAVsVfp.jpg http://i.imgur.com/vldwVuO.gifv http://i.imgur.com/xnh7rOV.jpg http://i.imgur.com/mdhdN6S.webm https://i.imgur.com/E08a7DV.gifv http://i.imgur.com/KFMavVV.jpg"
     ]
   },
   {
     "trigger": "types",
     "response": [
-      "Available prototype types: http: //pastebin.com/KH7dp57y"
+      "Available prototype types: http://pastebin.com/KH7dp57y"
     ]
   },
   {
@@ -21,7 +21,7 @@
   {
     "trigger": "bugs",
     "response": [
-      " --- BUGS GO IN THE BUG REPORT SECTION AT https: //forums.factorio.com/viewforum.php?f=7 --- "
+      " --- BUGS GO IN THE BUG REPORT SECTION AT https://forums.factorio.com/viewforum.php?f=7 --- "
     ]
   },
   {
@@ -33,19 +33,19 @@
   {
     "trigger": "ups",
     "response": [
-      "Is your base not performing like it used to? Is your PC locked at 100% CPU over all 1 cores? Download more ups today! http: //downloadmoreups.com "
+      "Is your base not performing like it used to? Is your PC locked at 100% CPU over all 1 cores? Download more ups today! http://downloadmoreups.com "
     ]
   },
   {
     "trigger": "github",
     "response": [
-      "https: //github.com/victorkoenders/TrangarBot"
+      "https://github.com/victorkoenders/TrangarBot"
     ]
   },
   {
     "trigger": "source",
     "response": [
-      "https: //github.com/victorkoenders/TrangarBot"
+      "https://github.com/victorkoenders/TrangarBot"
     ]
   },
   {

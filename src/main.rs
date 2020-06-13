@@ -20,7 +20,7 @@ async fn main() {
             let server = &config.servers[i];
             loop {
                 if let Err(e) = run_client(Arc::clone(&config), server).await {
-                    eprintln!("Client {} crashed: {:?}", server.host, e);
+                    eprintln!("Client {} disconnected: {:?}", server.host, e);
                     tokio::time::delay_for(Duration::from_secs(5)).await;
                 }
             }
@@ -38,7 +38,7 @@ async fn run_client(
     println!("Connecting to {}", server_config.host);
     let irc_client = Client::from_config(IrcConfig {
         server: Some(server_config.host.clone()),
-        nickname: Some(String::from("TrangarBot")),
+        nickname: Some(server_config.nickname.clone()),
         channels: server_config.channels.clone(),
         port: Some(6697),
         use_tls: Some(true),
@@ -184,6 +184,7 @@ impl Config {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfigServer {
+    pub nickname: String,
     pub host: String,
     pub channels: Vec<String>,
     pub factorio_channel: Option<String>,

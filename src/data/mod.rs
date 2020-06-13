@@ -106,7 +106,7 @@ pub struct Message<'a> {
 }
 
 impl Message<'_> {
-    pub fn reply(&self, text: &str) {
+    pub fn reply(&self, text: impl std::fmt::Display) {
         self.client.send_to_channel(self.reply_to, text);
     }
 }

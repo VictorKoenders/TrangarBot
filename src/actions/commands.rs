@@ -11,13 +11,14 @@ pub struct Command {
     trigger: String,
     response: Vec<String>,
     #[serde(skip)]
-    last_use: Option<Instant>,
+    last_invoke: LastInvoke,
 }
+
+const COMMAND_TIMEOUT_SECONDS: u64 = 60;
 
 lazy_static::lazy_static! {
     static ref COMMANDS: RwLock<Vec<Command>> = RwLock::new(Vec::new());
-    static ref LAST_HELP_COMMAND: RwLock<Instant> = RwLock::new(Instant::now());
-    static ref COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
+    static ref LAST_HELP_COMMAND: RwLock<LastInvoke> = RwLock::new(LastInvoke::default());
 }
 
 pub fn start() {
@@ -30,22 +31,40 @@ pub fn start() {
     }
 }
 
+#[derive(Default)]
+struct LastInvoke(Option<Instant>);
+impl LastInvoke {
+    pub fn can_invoke_again(&self) -> bool {
+        let command_timeout = Duration::from_secs(COMMAND_TIMEOUT_SECONDS);
+
+        if let Some(instant) = &self.0 {
+            instant.elapsed() > command_timeout
+        } else {
+            true
+        }
+    }
+
+    pub fn has_invoked(&mut self) {
+        self.0 = Some(Instant::now());
+    }
+}
+
 pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
     if message.body.trim() == "!help" {
-        if LAST_HELP_COMMAND.read().elapsed() > *COMMAND_TIMEOUT {
-            let mut response = String::from("Commands: ");
-            for (index, command) in COMMANDS.read().iter().enumerate() {
-                if index > 0 {
-                    response += ", ";
-                }
-                write!(&mut response, "!{}", command.trigger).expect("Could not create help text");
-            }
-            write!(&mut response, " (All commands have a 1 minute cooldown)")
-                .expect("Could not create help text");
+        if LAST_HELP_COMMAND.read().can_invoke_again() {
+            let commands = COMMANDS.read();
 
-            message.reply(&response);
+            let commands = commands
+                .iter()
+                .map(|c| c.trigger.as_str())
+                .collect::<Vec<_>>();
 
-            *LAST_HELP_COMMAND.write() = Instant::now();
+            message.reply(format!(
+                "Commands: {} (All commands have a 1 minute cooldown",
+                commands.join(", ")
+            ));
+
+            LAST_HELP_COMMAND.write().has_invoked();
         }
         return Ok(());
     }
@@ -74,7 +93,7 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
                 commands.push(Command {
                     trigger: left_hand.to_owned(),
                     response: vec![right_hand],
-                    last_use: None,
+                    last_invoke: LastInvoke::default(),
                 });
                 let mut f = match std::fs::File::create("commands.json") {
                     Ok(c) => c,
@@ -104,8 +123,8 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
     if message.body.starts_with('!') {
         let text = &message.body[1..];
         for command in COMMANDS.write().iter_mut() {
-            if text.starts_with(&command.trigger) && command_can_be_used(&command.last_use) {
-                command.last_use = Some(Instant::now());
+            if text.starts_with(&command.trigger) && command.last_invoke.can_invoke_again() {
+                command.last_invoke.has_invoked();
                 for response in &command.response {
                     message.reply(response);
                 }
@@ -114,12 +133,4 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-fn command_can_be_used(last_use: &Option<Instant>) -> bool {
-    if let Some(instant) = last_use {
-        instant.elapsed() > *COMMAND_TIMEOUT
-    } else {
-        true
-    }
 }

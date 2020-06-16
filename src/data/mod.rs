@@ -83,7 +83,7 @@ impl Client {
         }
     }
 
-    pub fn for_each_channel(&self, mut cb: impl FnMut(&Channel) -> ()) {
+    pub fn for_each_channel(&self, mut cb: impl FnMut(&Channel)) {
         let inner = self.0.read();
         for channel in &inner.channels {
             cb(channel);

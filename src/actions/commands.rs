@@ -59,7 +59,7 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
                 .collect::<Vec<_>>();
 
             message.reply(format!(
-                "Commands: {} (All commands have a 1 minute cooldown",
+                "Commands: {} (All commands have a 1 minute cooldown)",
                 commands.join(", ")
             ));
 

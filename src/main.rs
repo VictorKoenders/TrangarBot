@@ -11,7 +11,7 @@ use std::{convert::Infallible, sync::Arc, time::Duration};
 
 #[tokio::main]
 async fn main() {
-    let config = Arc::new(Config::from_file("config.json"));
+    let config = Arc::new(Config::from_file("config.json").expect("Could not load config"));
 
     for i in 0..config.servers.len() {
         let config = Arc::clone(&config);
@@ -176,9 +176,9 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_file(f: &str) -> Config {
-        let fs = std::fs::File::open(f).expect("Could not open config");
-        serde_json::from_reader(fs).expect("Could not read config")
+    pub fn from_file(f: &str) -> Result<Config, Box<dyn std::error::Error>> {
+        let fs = std::fs::File::open(f)?;
+        serde_json::from_reader(fs).map_err(Into::into)
     }
 }
 

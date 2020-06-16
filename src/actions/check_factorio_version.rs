@@ -66,7 +66,7 @@ async fn load_version() {
     println!("Version url: {:?}", url);
     println!("Version: {:?}", version);
     assert!(
-        url.starts_with("./viewtopic.php?f=3&amp;t="),
+        url.starts_with("./viewtopic.php?f=3&t="),
         "Url {:?} is not valid",
         url
     );

@@ -82,9 +82,10 @@ pub async fn query_wolfram_alpha(config: &crate::Config, query: &str) -> Result<
 
 #[tokio::test]
 pub async fn test() {
-    let config = crate::Config::from_file("config.json");
-    let response = query_wolfram_alpha(&config, "machine train")
-        .await
-        .expect("Could not query WA");
-    println!("{}", response);
+    if let Ok(config) = crate::Config::from_file("config.json") {
+        let response = query_wolfram_alpha(&config, "machine train")
+            .await
+            .expect("Could not query WA");
+        println!("{}", response);
+    }
 }

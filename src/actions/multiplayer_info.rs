@@ -36,9 +36,10 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
 
 #[tokio::test]
 pub async fn test() {
-    let config = crate::Config::from_file("config.json");
-    let games = load_games(&config).await.expect("Could not load games");
-    println!("First MP game: {:?}", games.first());
+    if let Ok(config) = crate::Config::from_file("config.json") {
+        let games = load_games(&config).await.expect("Could not load games");
+        println!("First MP game: {:?}", games.first());
+    }
 }
 
 async fn load_games(config: &crate::Config) -> Result<Vec<GameInfo>, String> {

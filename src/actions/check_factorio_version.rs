@@ -44,7 +44,7 @@ pub fn spawn(client: Client, channel_name: String) {
                     );
                     split[1] = format!("Latest version: {} {}", version, url);
 
-                    client.send_to_channel(&channel_name, split.join(" | "));
+                    client.set_channel_topic(&channel_name, split.join(" | "));
                     client.send_to_channel(
                         &channel_name,
                         format!("Version {} released. {}", version, url),
@@ -88,7 +88,7 @@ async fn get_last_version() -> Result<(String, String), String> {
         .map_err(|e| e.to_string())?;
 
     if let Some(capture) = regex.captures_iter(&response).next() {
-        Ok((capture[1].to_owned(), capture[2].to_owned()))
+        Ok((capture[1].replace("&amp;", "&"), capture[2].to_owned()))
     } else {
         Err(String::from("Could not find version"))
     }

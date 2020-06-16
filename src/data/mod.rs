@@ -74,6 +74,15 @@ impl Client {
         }
     }
 
+    pub fn set_channel_topic(&self, channel: &str, topic: impl std::fmt::Display) {
+        let inner = self.0.read();
+        if let Err(e) = inner.sender.send_topic(channel, &topic) {
+            eprintln!("Could not set channel {:?}'s topic", channel);
+            eprintln!("Message: {}", topic);
+            eprintln!("Error: {:?}", e);
+        }
+    }
+
     pub fn for_each_channel(&self, mut cb: impl FnMut(&Channel) -> ()) {
         let inner = self.0.read();
         for channel in &inner.channels {

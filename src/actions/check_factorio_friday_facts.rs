@@ -37,7 +37,7 @@ pub fn spawn(client: Client, channel_name: String) {
                     let url = format!("http://factorio.com/blog/post/fff-{}", facts);
                     split[2] = format!("Friday facts #{}: {}", facts, url);
 
-                    client.send_to_channel(&channel_name, split.join(" | "));
+                    client.set_channel_topic(&channel_name, split.join(" | "));
                     client.send_to_channel(
                         &channel_name,
                         format!("New factorio facts: {} {}", facts, url),

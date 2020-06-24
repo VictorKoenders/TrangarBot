@@ -96,7 +96,11 @@ async fn run_client_inner(
                     server_config,
                     client: &client,
                     body: &body,
-                    reply_to: channel_name,
+                    reply_to: if channel.is_some() {
+                        channel_name
+                    } else {
+                        nickname
+                    },
                     channel,
                     sender: nickname,
                 };

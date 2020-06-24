@@ -144,6 +144,9 @@ async fn run_client_inner(
             (Some(Prefix::Nickname(nickname, _, _)), Command::NICK(new_nickname)) => {
                 client.for_each_channel(|channel| channel.rename_user(nickname, new_nickname));
             }
+            (Some(Prefix::Nickname(nickname, _, _)), Command::QUIT(_)) => {
+                client.for_each_channel(|channel| channel.remove_user(nickname));
+            }
             (_, Command::ChannelMODE(channel, operations)) => {
                 let channel = client.find_or_create_channel(channel.clone());
                 for operation in operations {

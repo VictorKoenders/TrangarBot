@@ -165,7 +165,6 @@ async fn run_client_inner(
                     }
                 }
             }
-            #[allow(clippy::unnested_or_patterns)] // unstable feature
             (_, Command::Response(Response::RPL_MOTD, _)) | (_, Command::PONG(_, _)) => {}
             (_, cmd) => {
                 println!("{:?}", cmd);

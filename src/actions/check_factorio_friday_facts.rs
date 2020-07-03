@@ -40,7 +40,7 @@ pub fn spawn(client: Client, channel_name: String) {
                     client.set_channel_topic(&channel_name, split.join(" | "));
                     client.send_to_channel(
                         &channel_name,
-                        format!("New factorio facts: {} {}", facts, url),
+                        format!("New factorio farts: {} {}", facts, url),
                     );
                 }
             }

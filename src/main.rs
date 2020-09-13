@@ -41,7 +41,7 @@ async fn run_client(
         port: Some(6697),
         use_tls: Some(true),
         ping_timeout: Some(60),
-        ping_time: Some(60),
+        ping_time: Some(10),
         ..Default::default()
     })
     .await

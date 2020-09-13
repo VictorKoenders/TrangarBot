@@ -21,8 +21,10 @@ pub fn spawn(client: Client, channel_name: String) {
             };
             if last_facts.is_some() && last_facts != Some(facts.clone()) {
                 let url = format!("https://alt-f4.blog/ALTF4-{}/", facts);
-                client
-                    .send_to_channel(&channel_name, format!("New Al-f4 facts: {} {}", facts, url));
+                client.send_to_channel(
+                    &channel_name,
+                    format!("New Alt-f4 facts: #{} {}", facts, url),
+                );
 
                 /*
                 // TODO:
@@ -45,12 +47,8 @@ pub fn spawn(client: Client, channel_name: String) {
                 } else {
                     let url = format!("https://alt-f4.blog/ALTF4-{}/", facts);
                     split[3] = format!("{}: {}", url, facts);
+                    client.set_channel_topic(&channel_name, split.join(" | "));
 
-                    // client.set_channel_topic(&channel_name, split.join(" | "));
-                    client.send_to_channel(
-                        &channel_name,
-                        format!("New Al-f4 facts: #{} {}", facts, url),
-                    );
                 }
                 */
             }
@@ -85,7 +83,7 @@ async fn get_last_facts_post() -> Result<String, String> {
 
     let regex = Regex::new(r#"\#([0-9\.]+)"#).map_err(|e| e.to_string())?;
     if let Some(capture) = regex.captures_iter(&response).next() {
-        Ok(capture[0].to_owned().replace("#", ""))
+        Ok(capture[0].replace("#", ""))
     } else {
         Err(String::from("Could not find last alt facts post"))
     }

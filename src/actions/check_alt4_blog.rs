@@ -20,6 +20,12 @@ pub fn spawn(client: Client, channel_name: String) {
                 }
             };
             if last_facts.is_some() && last_facts != Some(facts.clone()) {
+                let url = format!("https://alt-f4.blog/ALTF4-{}/", facts);
+                client
+                    .send_to_channel(&channel_name, format!("New Al-f4 facts: {} {}", facts, url));
+
+                /*
+                // TODO:
                 let topic = match client.find_channel(&channel_name) {
                     Some(channel) => channel.topic(),
                     None => {
@@ -30,11 +36,11 @@ pub fn spawn(client: Client, channel_name: String) {
                         continue;
                     }
                 };
-                let mut split: Vec<String> =
-                    topic.split('|').map(|s| String::from(s.trim())).collect();
+                let split: Vec<_> =
+                    topic.split('|').map(|s| s.trim()).collect();
 
-                if split.len() < 4 {
-                    eprintln!("Invalid channel topic, expected at least 4 parts");
+                if split.len() < 3 {
+                    eprintln!("Invalid channel topic, expected at least 3 parts");
                     eprintln!("Topic is now: {:?}", topic);
                 } else {
                     let url = format!("https://alt-f4.blog/ALTF4-{}/", facts);
@@ -46,6 +52,7 @@ pub fn spawn(client: Client, channel_name: String) {
                         format!("New Al-f4 facts: #{} {}", facts, url),
                     );
                 }
+                */
             }
             last_facts = Some(facts);
         }

@@ -19,8 +19,7 @@ pub fn spawn(client: Client, channel_name: String) {
                     continue;
                 }
             };
-            // if last_facts.is_some() && last_facts != Some(facts.clone()) {
-            if last_facts.is_some() {
+            if last_facts.is_some() && last_facts != Some(facts.clone()) {
                 let topic = match client.find_channel(&channel_name) {
                     Some(channel) => channel.topic(),
                     None => {

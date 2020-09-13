@@ -37,7 +37,7 @@ pub fn spawn(client: Client, channel_name: String) {
                     let url = format!("https://alt-f4.blog/ALTF4-4/");
                     split[3] = format!("{}: {}", url, facts);
 
-                    client.set_channel_topic(&channel_name, split.join(" | "));
+                    // client.set_channel_topic(&channel_name, split.join(" | "));
                     client.send_to_channel(
                         &channel_name,
                         format!("New Al-f4 facts: {} {}", facts, url),
@@ -55,9 +55,9 @@ async fn sleep() {
 
 #[tokio::test]
 async fn load_facts() {
-    let facts = get_last_facts_post().await.expect("Could not load version");
+    let facts = get_last_facts_post().await.expect("Could not find last alt facts post");
     assert!(
-        !facts.is_empty() && facts.chars().all(|c| c == '.' || c.is_numeric()),
+        !facts.is_empty() ,
         "Facts version is invalid, got: {:?}",
         facts
     );

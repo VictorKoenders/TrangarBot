@@ -20,9 +20,11 @@ lazy_static::lazy_static! {
     static ref LAST_HELP_COMMAND: RwLock<LastInvoke> = RwLock::new(LastInvoke::default());
 }
 
+const FILE: &str = "persist/commands.json";
+
 pub fn start() {
     if COMMANDS.read().is_empty() {
-        if let Ok(file) = std::fs::File::open("commands.json") {
+        if let Ok(file) = std::fs::File::open(FILE) {
             let commands: Vec<Command> =
                 serde_json::from_reader(file).expect("Could not load commands.json");
             *COMMANDS.write() = commands;
@@ -94,7 +96,7 @@ pub async fn on_message<'a>(message: &'a Message<'a>) -> Result<(), String> {
                     response: vec![right_hand],
                     last_invoke: LastInvoke::default(),
                 });
-                let mut f = match std::fs::File::create("commands.json") {
+                let mut f = match std::fs::File::create(FILE) {
                     Ok(c) => c,
                     Err(e) => {
                         eprintln!("Could not open commands.json for writing");

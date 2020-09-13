@@ -13,22 +13,20 @@ use std::{convert::Infallible, sync::Arc, time::Duration};
 async fn main() {
     let config = Arc::new(Config::from_file("config.json").expect("Could not load config"));
 
-    for i in 0..config.servers.len() {
+    let tasks = (0..config.servers.len()).map(|server_index| {
         let config = Arc::clone(&config);
-        tokio::spawn(async move {
-            let config = config;
-            let server = &config.servers[i];
+        async move {
+            let server = &config.servers[server_index];
             loop {
                 if let Err(e) = run_client(Arc::clone(&config), server).await {
                     eprintln!("Client {} disconnected: {:?}", server.host, e);
-                    tokio::time::delay_for(Duration::from_secs(5)).await;
+                    tokio::time::delay_for(Duration::from_secs(30)).await;
                 }
             }
-        });
-    }
-    loop {
-        tokio::time::delay_for(Duration::from_secs(60)).await;
-    }
+        }
+    });
+
+    futures::future::join_all(tasks).await;
 }
 
 async fn run_client(

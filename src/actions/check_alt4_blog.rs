@@ -37,7 +37,7 @@ pub fn spawn(client: Client, channel_name: String) {
                     eprintln!("Invalid channel topic, expected at least 4 parts");
                     eprintln!("Topic is now: {:?}", topic);
                 } else {
-                    let url = format!("https://alt-f4.blog/ALTF4-4/");
+                    let url = format!("https://alt-f4.blog/ALTF4-{}/", facts);
                     split[3] = format!("{}: {}", url, facts);
 
                     // client.set_channel_topic(&channel_name, split.join(" | "));

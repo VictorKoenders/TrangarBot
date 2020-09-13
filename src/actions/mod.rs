@@ -1,6 +1,6 @@
 mod autojoin;
-mod check_factorio_friday_facts;
 mod check_alt4_blog;
+mod check_factorio_friday_facts;
 mod check_factorio_version;
 mod commands;
 mod multiplayer_info;

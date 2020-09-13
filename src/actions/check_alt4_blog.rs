@@ -23,7 +23,10 @@ pub fn spawn(client: Client, channel_name: String) {
                 let topic = match client.find_channel(&channel_name) {
                     Some(channel) => channel.topic(),
                     None => {
-                        eprintln!("Tried to notify of a new alt-f4 blog, but could not find channel {:?}", channel_name);
+                        eprintln!(
+                            "Tried to notify of a new alt-f4 blog, but could not find channel {:?}",
+                            channel_name
+                        );
                         continue;
                     }
                 };
@@ -55,9 +58,11 @@ async fn sleep() {
 
 #[tokio::test]
 async fn load_facts() {
-    let facts = get_last_facts_post().await.expect("Could not find last alt facts post");
+    let facts = get_last_facts_post()
+        .await
+        .expect("Could not find last alt facts post");
     assert!(
-        !facts.is_empty() ,
+        !facts.is_empty(),
         "Facts version is invalid, got: {:?}",
         facts
     );

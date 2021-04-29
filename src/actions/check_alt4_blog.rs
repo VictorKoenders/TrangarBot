@@ -25,32 +25,6 @@ pub fn spawn(client: Client, channel_name: String) {
                     &channel_name,
                     format!("New Alt-f4 facts: #{} {}", facts, url),
                 );
-
-                /*
-                // TODO:
-                let topic = match client.find_channel(&channel_name) {
-                    Some(channel) => channel.topic(),
-                    None => {
-                        eprintln!(
-                            "Tried to notify of a new alt-f4 blog, but could not find channel {:?}",
-                            channel_name
-                        );
-                        continue;
-                    }
-                };
-                let split: Vec<_> =
-                    topic.split('|').map(|s| s.trim()).collect();
-
-                if split.len() < 3 {
-                    eprintln!("Invalid channel topic, expected at least 3 parts");
-                    eprintln!("Topic is now: {:?}", topic);
-                } else {
-                    let url = format!("https://alt-f4.blog/ALTF4-{}/", facts);
-                    split[3] = format!("{}: {}", url, facts);
-                    client.set_channel_topic(&channel_name, split.join(" | "));
-
-                }
-                */
             }
             last_facts = Some(facts);
         }
@@ -58,7 +32,7 @@ pub fn spawn(client: Client, channel_name: String) {
 }
 
 async fn sleep() {
-    tokio::time::delay_for(Duration::from_secs(10)).await;
+    tokio::time::delay_for(Duration::from_secs(60 * 10)).await;
 }
 
 #[tokio::test]

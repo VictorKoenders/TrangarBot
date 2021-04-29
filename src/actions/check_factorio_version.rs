@@ -36,11 +36,7 @@ pub fn spawn(client: Client, channel_name: String) {
                 } else {
                     let url = format!(
                         "https://forums.factorio.com/{}",
-                        if url.starts_with("./") {
-                            &url[2..]
-                        } else {
-                            &url
-                        }
+                        url.strip_prefix("./").unwrap_or_else(|| url.as_str())
                     );
                     split[1] = format!("Latest version: {} {}", version, url);
 
@@ -57,7 +53,7 @@ pub fn spawn(client: Client, channel_name: String) {
 }
 
 async fn sleep() {
-    tokio::time::delay_for(Duration::from_secs(60)).await;
+    tokio::time::delay_for(Duration::from_secs(60 * 10)).await;
 }
 
 #[tokio::test]

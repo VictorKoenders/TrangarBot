@@ -50,7 +50,7 @@ pub fn spawn(client: Client, channel_name: String) {
 }
 
 async fn sleep() {
-    tokio::time::delay_for(Duration::from_secs(10)).await;
+    tokio::time::delay_for(Duration::from_secs(60 * 10)).await;
 }
 
 #[tokio::test]

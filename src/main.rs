@@ -20,7 +20,7 @@ async fn main() {
             loop {
                 if let Err(e) = run_client(Arc::clone(&config), server).await {
                     eprintln!("Client {} disconnected: {:?}", server.host, e);
-                    tokio::time::delay_for(Duration::from_secs(30)).await;
+                    tokio::time::sleep(Duration::from_secs(30)).await;
                 }
             }
         }

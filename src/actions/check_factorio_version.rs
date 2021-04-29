@@ -4,6 +4,7 @@
 //! new post available, it will be broadcasted to the IRC client.
 
 use crate::data::Client;
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::time::Duration;
 
@@ -53,7 +54,7 @@ pub fn spawn(client: Client, channel_name: String) {
 }
 
 async fn sleep() {
-    tokio::time::delay_for(Duration::from_secs(60 * 10)).await;
+    tokio::time::sleep(Duration::from_secs(60 * 10)).await;
 }
 
 #[tokio::test]
@@ -73,6 +74,11 @@ async fn load_version() {
     );
 }
 
+lazy_static! {
+    static ref VERSION_REGEX: Regex =
+        Regex::new(r#"<a href="([^"]*)"[^>]*topictitle">Version ([^<]*)<"#).unwrap();
+}
+
 async fn get_last_version() -> Result<(String, String), String> {
     let response = reqwest::get("https://forums.factorio.com/viewforum.php?f=3")
         .await
@@ -80,10 +86,10 @@ async fn get_last_version() -> Result<(String, String), String> {
         .text()
         .await
         .map_err(|e| e.to_string())?;
-    let regex = Regex::new(r#"<a href="([^"]*)"[^>]*topictitle">Version ([^<]*)<"#)
-        .map_err(|e| e.to_string())?;
 
-    if let Some(capture) = regex.captures_iter(&response).next() {
+    let mut captures = VERSION_REGEX.captures_iter(&response);
+
+    if let Some(capture) = captures.next() {
         Ok((capture[1].replace("&amp;", "&"), capture[2].to_owned()))
     } else {
         Err(String::from("Could not find version"))

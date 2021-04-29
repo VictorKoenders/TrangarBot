@@ -4,6 +4,7 @@
 //! new post available, it will be broadcasted to the IRC client.
 
 use crate::data::Client;
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::time::Duration;
 
@@ -32,7 +33,7 @@ pub fn spawn(client: Client, channel_name: String) {
 }
 
 async fn sleep() {
-    tokio::time::delay_for(Duration::from_secs(60 * 10)).await;
+    tokio::time::sleep(Duration::from_secs(60 * 10)).await;
 }
 
 #[tokio::test]
@@ -47,6 +48,10 @@ async fn load_facts() {
     );
 }
 
+lazy_static! {
+    static ref FACT_POST_REGEX: Regex = Regex::new(r#"\#([0-9\.]+)"#).unwrap();
+}
+
 async fn get_last_facts_post() -> Result<String, String> {
     let response = reqwest::get("https://alt-f4.blog/")
         .await
@@ -55,8 +60,8 @@ async fn get_last_facts_post() -> Result<String, String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    let regex = Regex::new(r#"\#([0-9\.]+)"#).map_err(|e| e.to_string())?;
-    if let Some(capture) = regex.captures_iter(&response).next() {
+    let mut captures = FACT_POST_REGEX.captures_iter(&response);
+    if let Some(capture) = captures.next() {
         Ok(capture[0].replace("#", ""))
     } else {
         Err(String::from("Could not find last alt facts post"))

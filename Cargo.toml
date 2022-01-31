@@ -6,7 +6,7 @@ version = "0.1.0"
 
 [dependencies]
 lazy_static = "1.4"
-parking_lot = "0.11"
+parking_lot = "0.12"
 regex = "1.4"
 serde = "1.0"
 serde_derive = "1.0"

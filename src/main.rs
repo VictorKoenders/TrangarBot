@@ -93,7 +93,7 @@ async fn run_client_inner(
                     config: &config,
                     server_config,
                     client: &client,
-                    body: &body,
+                    body,
                     reply_to: if channel.is_some() {
                         channel_name
                     } else {
@@ -130,8 +130,8 @@ async fn run_client_inner(
                 }
             }
             (Some(Prefix::Nickname(nickname, _, _)), Command::PART(channel, _)) => {
-                if let Some(channel) = client.find_channel(&channel) {
-                    channel.remove_user(&nickname);
+                if let Some(channel) = client.find_channel(channel) {
+                    channel.remove_user(nickname);
                 }
             }
             (Some(Prefix::Nickname(nickname, _, _)), Command::JOIN(channel, None, None)) => {

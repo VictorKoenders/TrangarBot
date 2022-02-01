@@ -56,30 +56,30 @@ async fn load_games(config: &crate::Config) -> Result<Vec<GameInfo>, String> {
 
 #[derive(Debug, Deserialize)]
 struct GameInfo {
-    pub game_id: u64,
+    // pub game_id: u64,
     pub name: String,
-    #[serde(deserialize_with = "string_or_number_to_u64")]
-    pub max_players: u64,
+    // #[serde(deserialize_with = "string_or_number_to_u64")]
+    // pub max_players: u64,
     #[serde(default)]
     pub players: Vec<String>,
     pub application_version: GameVersion,
-    #[serde(deserialize_with = "string_or_number_to_u64")]
-    pub game_time_elapsed: u64,
+    // #[serde(deserialize_with = "string_or_number_to_u64")]
+    // pub game_time_elapsed: u64,
     #[serde(deserialize_with = "parse_string_bool")]
     pub has_password: bool,
-    #[serde(default)]
-    pub server_id: Option<String>,
-    pub has_mods: bool,
+    // #[serde(default)]
+    // pub server_id: Option<String>,
+    // pub has_mods: bool,
     pub mod_count: u64,
 }
 
 #[derive(Debug, Deserialize)]
 struct GameVersion {
     pub game_version: String,
-    #[serde(deserialize_with = "string_or_number_to_u64")]
-    pub build_version: u64,
-    pub build_mode: String,
-    pub platform: String,
+    // #[serde(deserialize_with = "string_or_number_to_u64")]
+    // pub build_version: u64,
+    // pub build_mode: String,
+    // pub platform: String,
 }
 
 fn parse_string_bool<'de, D>(deserializer: D) -> std::result::Result<bool, D::Error>
@@ -113,33 +113,33 @@ where
     deserializer.deserialize_any(IdVisitor)
 }
 
-fn string_or_number_to_u64<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct IdVisitor;
+// fn string_or_number_to_u64<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
+// where
+//     D: serde::Deserializer<'de>,
+// {
+//     struct IdVisitor;
 
-    impl<'de> serde::de::Visitor<'de> for IdVisitor {
-        type Value = u64;
+//     impl<'de> serde::de::Visitor<'de> for IdVisitor {
+//         type Value = u64;
 
-        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.write_str("user ID as a number or string")
-        }
+//         fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//             f.write_str("user ID as a number or string")
+//         }
 
-        fn visit_u64<E>(self, id: u64) -> std::result::Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            Ok(id)
-        }
+//         fn visit_u64<E>(self, id: u64) -> std::result::Result<Self::Value, E>
+//         where
+//             E: serde::de::Error,
+//         {
+//             Ok(id)
+//         }
 
-        fn visit_str<E>(self, id: &str) -> std::result::Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            id.parse().map_err(serde::de::Error::custom)
-        }
-    }
+//         fn visit_str<E>(self, id: &str) -> std::result::Result<Self::Value, E>
+//         where
+//             E: serde::de::Error,
+//         {
+//             id.parse().map_err(serde::de::Error::custom)
+//         }
+//     }
 
-    deserializer.deserialize_any(IdVisitor)
-}
+//     deserializer.deserialize_any(IdVisitor)
+// }

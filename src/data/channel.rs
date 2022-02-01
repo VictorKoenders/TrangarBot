@@ -38,7 +38,7 @@ impl Channel {
         let mut inner = self.0.write();
         let users = &mut inner.users;
 
-        if users.iter().find(|u| u.name == name).is_none() {
+        if !users.iter().any(|u| u.name == name) {
             let user = User { name, flags };
 
             users.push(user);

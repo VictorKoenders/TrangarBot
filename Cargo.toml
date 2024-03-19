@@ -15,7 +15,7 @@ futures = "0.3"
 url = "2.2"
 
 [dependencies.irc]
-version = "0.15"
+version = "1.0"
 default-features = false
 features = ["ctcp", "tls-rust"]
 
